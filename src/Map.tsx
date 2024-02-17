@@ -21,52 +21,59 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
   const userPositionRef = useRef<GeoPosition | null>(null);
   const shouldGuideRef = useRef(false);
   const zoomLevelRef = useRef<number>(defaultZoomLevel);
+  const airportCodeRef = useRef<string | null>(null);
   const runwayNameRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        console.debug(`useEffect: initial draw`);
+  const reloadData = async () => {
+    try {
+      console.debug(`reload data`);
 
-        const data = await getData(airportCode);
-        lastKnownDataRef.current = data;
-
-        const canvas = canvasRef.current;
-
-        if (!canvas) {
-          console.warn("no canvas");
-          return;
-        }
-
-        const newCenterPosition = {
-          lat: data.airport.laty,
-          long: data.airport.lonx,
-        };
-
-        centerPositionRef.current = {
-          ...newCenterPosition,
-        };
-
-        userPositionRef.current = {
-          ...newCenterPosition,
-        };
-
-        await draw(
-          {
-            canvas,
-            ctx: canvas.getContext("2d")!,
-            zoomLevel: zoomLevelRef.current,
-            centerPosition: newCenterPosition,
-            userPosition: userPositionRef.current,
-            shouldGuide: shouldGuideRef.current,
-            runwayName: runwayNameRef.current,
-          },
-          data
-        );
-      } catch (err) {
-        console.error(err);
+      if (!airportCodeRef.current) {
+        return;
       }
-    })();
+
+      const data = await getData(airportCodeRef.current);
+      lastKnownDataRef.current = data;
+
+      const canvas = canvasRef.current;
+
+      if (!canvas) {
+        console.warn("no canvas");
+        return;
+      }
+
+      const newCenterPosition = {
+        lat: data.airport.laty,
+        long: data.airport.lonx,
+      };
+
+      centerPositionRef.current = {
+        ...newCenterPosition,
+      };
+
+      userPositionRef.current = {
+        ...newCenterPosition,
+      };
+
+      await draw(
+        {
+          canvas,
+          ctx: canvas.getContext("2d")!,
+          zoomLevel: zoomLevelRef.current,
+          centerPosition: newCenterPosition,
+          userPosition: userPositionRef.current,
+          shouldGuide: shouldGuideRef.current,
+          runwayName: runwayNameRef.current,
+        },
+        data
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    reloadData();
   }, []);
 
   useEffect(() => {
@@ -282,6 +289,11 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
     redraw();
   };
 
+  const visitNewAirportCode = () => {
+    airportCodeRef.current = airportCode;
+    reloadData();
+  };
+
   return (
     <>
       <Panel name="tools">
@@ -291,6 +303,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
           value={airportCode}
           onChange={(e) => setAirportCode(e.target.value)}
         />
+        <button onClick={() => visitNewAirportCode()}>Visit</button>
         <br />
         Runway name (eg. 22 or 05L):
         <input
@@ -321,7 +334,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
         Taxiways start dark then end light
       </Panel>
       <Panel name="menu">
-        <button onClick={() => backToMainMenu()}>Load new sqlite file</button>
+        <button onClick={() => backToMainMenu()}>Back to main menu</button>
       </Panel>
       <canvas ref={canvasRef}></canvas>
     </>

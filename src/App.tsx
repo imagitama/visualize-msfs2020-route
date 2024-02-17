@@ -35,6 +35,7 @@ export default function App() {
   const reset = () => {
     killDb();
     setSelectedFile(null);
+    setHasLoaded(false);
   };
 
   if (!hasLoaded) {
@@ -55,6 +56,7 @@ export default function App() {
             to convert MSFS2020 scenery files to SQLite
           </li>
           <li>Select the file below</li>
+          <li>Map will be drawn</li>
         </ol>
         <br />
         <br />
@@ -78,6 +80,9 @@ export default function App() {
         <br />
         <br />
         <br />
+        <a href="https://github.com/imagitama/visualize-msfs2020-route/tree/master/src">
+          Sourcecode
+        </a>
         <br />
         <br />
         Tested in Firefox 122 with MSFS2020 with base scenery on Feb 17 2024
@@ -85,8 +90,41 @@ export default function App() {
         <br />
         Issues/ideas:
         <ul>
-          <li>scrolling sucks</li>
+          <li>runway rendering is not rectangular</li>
+          <li>graph should exclude any neighbors whose angle is too sharp</li>
+          <li>
+            guide should end at the actual runway not 1 or 2 nodes near it
+          </li>
+          <li>scrolling is weird sometimes</li>
         </ul>
+        <br />
+        How it works:
+        <ol>
+          <li>
+            load the SQLite database and retrieve airport, its runways and its
+            taxiways (which come broken down into taxipaths)
+          </li>
+          <li>give each taxipath an index to help later</li>
+          <li>
+            draw the runway as a polygon, taxipaths as straight lines, user
+            position as yellow dot
+          </li>
+          <li>
+            if guide is enabled, a "graph" is created - a simple map that tracks
+            the distance to each direct neighbor of each taxipath
+          </li>
+          <li>
+            the closest taxipath to the user and to the target runway is decided
+            based on distance
+          </li>
+          <li>
+            the graph is provided to a{" "}
+            <a href="https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm">
+              dijkstra algorithm
+            </a>{" "}
+            to find the shortest path from the start node to end node
+          </li>
+        </ol>
       </>
     );
   } else {
