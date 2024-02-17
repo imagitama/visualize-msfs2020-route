@@ -32,9 +32,11 @@ export function drawHollowDot(
   ctx: CanvasRenderingContext2D,
   pos: CanvasPosition,
   color: string,
-  radius: number = 5
+  thickness: number,
+  radius: number
 ) {
   ctx.beginPath();
+  ctx.lineWidth = thickness;
   ctx.arc(pos.x, pos.y, radius, 0, 2 * Math.PI);
   ctx.strokeStyle = color;
   ctx.stroke();
@@ -153,9 +155,15 @@ export const widthToCanvas = (width: number, zoomLevel: number) => {
   return width * actualZoomLevel * 0.000001;
 };
 
+export const taxiPathWidthToCanvas = (width: number, zoomLevel: number) => {
+  const actualZoomLevel = getActualZoomLevel(zoomLevel);
+  // TODO: Identify why this multiplier is necessary (should always be using widthToCanvas)
+  return width * actualZoomLevel * 0.000005;
+};
+
 export const runwayWidthToCanvas = (width: number, zoomLevel: number) => {
   const actualZoomLevel = getActualZoomLevel(zoomLevel);
-  return width * actualZoomLevel * 0.000000000002;
+  return width * actualZoomLevel * 0.00002;
 };
 
 interface AppState {
@@ -223,7 +231,9 @@ function drawRunway(state: AppState, runway: Runway) {
     long: runway.runwayEnd_2.lonx,
   };
 
-  const geoPoints = getGeoPolygon(startGeoPos, endGeoPos, runway.width);
+  // TODO: Use same width here as for getting runway intersections
+  // TODO: Work out why * 3 is necessary to make it look correct
+  const geoPoints = getGeoPolygon(startGeoPos, endGeoPos, runway.width * 3);
 
   const canvasPoints = geoPoints.map((pos) =>
     convertGeoPositionToCanvasPosition(state, pos)
@@ -231,7 +241,19 @@ function drawRunway(state: AppState, runway: Runway) {
 
   console.debug(`draw runway`, { geoPoints }, { canvasPoints });
 
-  drawPolygon(state.ctx, canvasPoints, "rgb(50, 50, 50)");
+  // TODO: Bring this back - for some reason the polygon is skewed weirdly
+  // drawPolygon(state.ctx, canvasPoints, "rgb(75, 50, 50)");
+
+  const startPos = convertGeoPositionToCanvasPosition(state, startGeoPos);
+  const endPos = convertGeoPositionToCanvasPosition(state, endGeoPos);
+
+  drawLine(
+    state.ctx,
+    startPos,
+    endPos,
+    "rgb(75, 50, 50",
+    widthToCanvas(1000, state.zoomLevel)
+  );
 }
 
 function drawRunwayEnd(state: AppState, runwayEnd: RunwayEnd) {
@@ -254,7 +276,13 @@ function drawRunwayIntersection(
     : runwayIntersection.taxiPath.end_lonx;
   const pos = convertGeoPositionToCanvasPosition(state, { lat, long });
 
-  drawHollowDot(state.ctx, pos, "orange", distanceToCanvas(8, state.zoomLevel));
+  drawHollowDot(
+    state.ctx,
+    pos,
+    "orange",
+    widthToCanvas(25, state.zoomLevel),
+    widthToCanvas(200, state.zoomLevel)
+  );
 }
 
 function drawTaxiPath(
@@ -270,7 +298,7 @@ function drawTaxiPath(
     lat: taxiPath.end_laty,
     long: taxiPath.end_lonx,
   });
-  const thickness = widthToCanvas(
+  const thickness = taxiPathWidthToCanvas(
     isHighlighted ? taxiPath.width + 1 : taxiPath.width,
     state.zoomLevel
   );

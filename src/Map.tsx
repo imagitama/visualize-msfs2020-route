@@ -5,13 +5,14 @@ import { Data, getData } from "./data";
 
 const maxZoomLevel = 20;
 const defaultZoomLevel = 5;
+const defaultAirportCode = "KGCN";
 
 const Panel = ({ children, name }: { children: any; name: string }) => (
   <div className={`panel panel_${name}`}>{children}</div>
 );
 
 export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
-  const [airportCode, setAirportCode] = useState("KGCN");
+  const [airportCode, setAirportCode] = useState(defaultAirportCode);
   const [runwayName, setRunwayName] = useState("03");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,7 +22,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
   const userPositionRef = useRef<GeoPosition | null>(null);
   const shouldGuideRef = useRef(false);
   const zoomLevelRef = useRef<number>(defaultZoomLevel);
-  const airportCodeRef = useRef<string | null>(null);
+  const airportCodeRef = useRef<string | null>(defaultAirportCode);
   const runwayNameRef = useRef<string | null>(null);
 
   const reloadData = async () => {
