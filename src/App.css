@@ -1,0 +1,104 @@
+/*
+ * @NOTE: Prepend a `~` to css file paths that are in your node_modules
+ *        See https://github.com/webpack-contrib/sass-loader#imports
+ */
+body {
+  position: relative;
+  color: white;
+  height: 100vh;
+  background: #000;
+  font-family: sans-serif;
+  overflow-y: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+button {
+  background-color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  appearance: none;
+  font-size: 1rem;
+  margin-right: 2px;
+  box-shadow: 0px 8px 28px -6px rgba(24, 39, 75, 0.12),
+    0px 18px 88px -4px rgba(24, 39, 75, 0.14);
+  transition: all ease-in 0.1s;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+input[type="text"] {
+  background-color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  appearance: none;
+  font-size: 1rem;
+  margin-right: 2px;
+  box-shadow: 0px 8px 28px -6px rgba(24, 39, 75, 0.12),
+    0px 18px 88px -4px rgba(24, 39, 75, 0.14);
+  transition: all ease-in 0.1s;
+  cursor: text;
+  opacity: 0.9;
+}
+
+button:hover {
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+small {
+  font-size: 0.6rem;
+}
+
+li {
+  margin-left: 10px;
+}
+
+a {
+  text-decoration: underline;
+  color: inherit;
+  height: fit-content;
+  width: fit-content;
+  opacity: 0.8;
+}
+
+a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+canvas {
+  width: 100vw;
+  height: 100vw;
+  outline: 1px solid black;
+}
+
+.panel {
+  position: fixed;
+  padding: 5px;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.panel_tools {
+  top: 0;
+  left: 0;
+}
+
+.panel_legend {
+  bottom: 0;
+  right: 0;
+}
+
+.panel_menu {
+  bottom: 0;
+  left: 0;
+}
