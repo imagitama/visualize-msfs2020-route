@@ -2,7 +2,6 @@ import { query } from "./sqlite";
 import {
   getDistance,
   getMidpoint,
-  isLatLongEqual,
   isGeoPositionInsideGeoPolygon,
   GeoPolygon,
   getGeoPolygon,
