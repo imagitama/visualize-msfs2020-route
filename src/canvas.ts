@@ -419,29 +419,26 @@ const drawGraphStartAndEnd = (
 ) => {
   console.debug(`graph`, graph, `${startNodeName} => ${endNodeName}`);
 
-  // const start = convertGeoPositionToCanvasPosition(state, {
-  //   lat: (graph[startNodeName].source as TaxiPath).end_laty,
-  //   long: (graph[startNodeName].source as TaxiPath).end_lonx,
-  // });
-  // drawHollowDot(
-  //   state.ctx,
-  //   start,
-  //   "green",
-  //   widthToCanvas(50, state.zoomLevel),
-  //   distanceToCanvas(20, state.zoomLevel)
-  // );
+  const startNode = graph[startNodeName];
+  const endNode = graph[endNodeName];
 
-  // const end = convertGeoPositionToCanvasPosition(state, {
-  //   lat: (graph[endNodeName].source as TaxiPath).end_laty,
-  //   long: (graph[endNodeName].source as TaxiPath).end_lonx,
-  // });
-  // drawHollowDot(
-  //   state.ctx,
-  //   end,
-  //   "red",
-  //   widthToCanvas(50, state.zoomLevel),
-  //   distanceToCanvas(20, state.zoomLevel)
-  // );
+  const start = convertGeoPositionToCanvasPosition(state, startNode.pos);
+  drawHollowDot(
+    state.ctx,
+    start,
+    "green",
+    widthToCanvas(50, state.zoomLevel),
+    distanceToCanvas(20, state.zoomLevel)
+  );
+
+  const end = convertGeoPositionToCanvasPosition(state, endNode.pos);
+  drawHollowDot(
+    state.ctx,
+    end,
+    "red",
+    widthToCanvas(50, state.zoomLevel),
+    distanceToCanvas(20, state.zoomLevel)
+  );
 };
 
 const getStartNodeName = (
