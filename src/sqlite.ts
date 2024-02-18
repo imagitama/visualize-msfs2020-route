@@ -65,6 +65,25 @@ export const readSqliteFile = async (file: File) => {
   });
 };
 
+export const readSqliteUrl = async (url: string) => {
+  console.debug(`reading sqlite url`, url);
+
+  const arrayBuffer = await fetch(url).then((res) => res.arrayBuffer());
+  const data = new Uint8Array(arrayBuffer);
+
+  db = await init(data);
+
+  console.debug("db", db);
+
+  const tableInfo = await query(
+    `SELECT * FROM sqlite_schema WHERE type='table'`
+  );
+
+  console.debug("tables", tableInfo);
+
+  return db;
+};
+
 type Row = { [columnName: string]: any };
 
 export const query = async <TSingleRow = void>(
@@ -78,6 +97,7 @@ export const query = async <TSingleRow = void>(
   const execResults = db.exec(queryStr);
 
   if (!Array.isArray(execResults) || execResults.length !== 1) {
+    console.debug(`execResults`, queryStr, execResults);
     throw new Error(`Query ${queryStr} did not return single result`);
   }
 

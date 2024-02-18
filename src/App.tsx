@@ -1,6 +1,6 @@
 import "./App.css";
 import { useState } from "react";
-import { readSqliteFile, killDb } from "./sqlite";
+import { readSqliteFile, killDb, readSqliteUrl } from "./sqlite";
 import Map from "./Map";
 
 export default function App() {
@@ -8,7 +8,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const load = async () => {
+  const loadSelectedFile = async () => {
     try {
       if (!selectedFile) {
         return;
@@ -36,6 +36,26 @@ export default function App() {
     killDb();
     setSelectedFile(null);
     setHasLoaded(false);
+  };
+
+  const loadExampleFile = async () => {
+    try {
+      console.debug(`loading...`);
+
+      setIsLoading(true);
+
+      const result = await readSqliteUrl("/KGCN.sqlite");
+
+      if (result) {
+        console.debug(`loaded successfully`);
+        setIsLoading(false);
+        setHasLoaded(true);
+      } else {
+        throw new Error("Resolved but no data");
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   if (!hasLoaded) {
@@ -74,7 +94,8 @@ export default function App() {
         {selectedFile && <>You have selected "{selectedFile.name}"</>}
         <br />
         <br />
-        <button onClick={() => load()}>Load</button>
+        <button onClick={() => loadSelectedFile()}>Load</button>
+        <button onClick={() => loadExampleFile()}>Load Example Data</button>
         {isLoading && <>Loading (takes a few seconds)...</>}
         <br />
         <br />

@@ -29,7 +29,7 @@ export const getData = async (airportCode: string): Promise<Data> => {
   console.debug(`airport`, airport);
 
   const runways = await query<Runway>(
-    `SELECT * FROM runway WHERE airport_id = '${airport.airport_id}'`
+    `SELECT * FROM runway WHERE airport_id = ${airport.airport_id}`
   );
 
   console.debug(`found ${runways.length} runways`, runways);
@@ -70,7 +70,7 @@ export const getData = async (airportCode: string): Promise<Data> => {
   }));
 
   const taxiPaths = await query<TaxiPath>(
-    `SELECT * FROM taxi_path WHERE airport_id = '${airport.airport_id}'`
+    `SELECT * FROM taxi_path WHERE airport_id = ${airport.airport_id}`
   );
 
   const taxiPathsWithBetterPos = taxiPaths.map((taxiPath) => ({
