@@ -535,7 +535,8 @@ const drawAngleBetweenNodes = (
 const drawGraphNode = (
   state: AppState,
   nodeName: string,
-  node: NodeWithData
+  node: NodeWithData,
+  index: number
 ) => {
   const canvasPos = convertGeoPositionToCanvasPosition(state, node.pos);
 
@@ -543,7 +544,7 @@ const drawGraphNode = (
 
   drawText(
     state.ctx,
-    nodeName,
+    index.toString(),
     {
       x: canvasPos.x + 20,
       y: canvasPos.y + 5,
@@ -683,9 +684,11 @@ export const draw = async (
   }
 
   if (graph && state.settings.showGraph) {
+    let idx = 0;
     for (const nodeName in graph) {
       const node = graph[nodeName];
-      drawGraphNode(state, nodeName, node);
+      drawGraphNode(state, nodeName, node, idx);
+      idx++;
     }
   }
 

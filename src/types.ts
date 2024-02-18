@@ -97,9 +97,8 @@ export interface Node {
 type NodeIntersection = [string, string];
 
 export interface NodeWithData extends Node {
-  pos: GeoPosition;
-  // source: any;
-  intersections: NodeIntersection[];
+  pos: GeoPosition; // note - node name is lat,long
+  // intersections: NodeIntersection[];
   neighborAngles: {
     [name: string]: number; // degrees
   };

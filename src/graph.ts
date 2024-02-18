@@ -31,7 +31,7 @@ export const getIsAngleTooSharp = (
 const createNode = (pos: GeoPosition): NodeWithData => ({
   neighbors: {},
   neighborAngles: {},
-  intersections: [],
+  // intersections: [],
   pos,
 });
 
