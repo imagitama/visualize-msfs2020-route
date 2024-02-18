@@ -1,11 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { canvasToLatLong, draw, getPanSpeed } from "./canvas";
-import { GeoPosition } from "./types";
+import { GeoPosition, Settings } from "./types";
 import { Data, getData } from "./data";
 
 const maxZoomLevel = 20;
-const defaultZoomLevel = 5;
+// const defaultZoomLevel = 5;
+// const overrideCenterPosition = null;
+const overrideCenterPosition = {
+  lat: 35.94717597961426,
+  long: -112.15071868896484,
+};
+const defaultZoomLevel = 10;
 const defaultAirportCode = "KGCN";
+const defaultRunwayName = "03";
+const defaultSettings: Settings = {
+  showGraph: true,
+  showTaxiPathLabels: true,
+  showRunwayIntersections: true,
+  showAngles: true,
+  useRealisticWidths: false,
+};
 
 const Panel = ({ children, name }: { children: any; name: string }) => (
   <div className={`panel panel_${name}`}>{children}</div>
@@ -13,17 +27,29 @@ const Panel = ({ children, name }: { children: any; name: string }) => (
 
 export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
   const [airportCode, setAirportCode] = useState(defaultAirportCode);
-  const [runwayName, setRunwayName] = useState("03");
+  const [runwayName, setRunwayName] = useState(defaultRunwayName);
+  const [taxiPathName, setTaxiPathName] = useState("");
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const lastKnownDataRef = useRef<Data | null>(null);
+
+  // TODO: Move these all to state so works across hot reloads and can persist
   const centerPositionRef = useRef<GeoPosition | null>(null);
   const userPositionRef = useRef<GeoPosition | null>(null);
   const shouldGuideRef = useRef(false);
   const zoomLevelRef = useRef<number>(defaultZoomLevel);
   const airportCodeRef = useRef<string | null>(defaultAirportCode);
   const runwayNameRef = useRef<string | null>(null);
+  const settingsRef = useRef<Settings>(defaultSettings);
+
+  const toggleSetting = (settingName: keyof typeof settings) => {
+    setSettings((currentSettings) => ({
+      ...currentSettings,
+      [settingName]: !currentSettings[settingName],
+    }));
+  };
 
   const reloadData = async () => {
     try {
@@ -43,7 +69,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
         return;
       }
 
-      const newCenterPosition = {
+      const newCenterPosition = overrideCenterPosition || {
         lat: data.airport.laty,
         long: data.airport.lonx,
       };
@@ -65,6 +91,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
           userPosition: userPositionRef.current,
           shouldGuide: shouldGuideRef.current,
           runwayName: runwayNameRef.current,
+          settings: settingsRef.current,
         },
         data
       );
@@ -74,12 +101,20 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
   };
 
   useEffect(() => {
+    settingsRef.current = settings;
+    redraw();
+  }, [JSON.stringify(settings)]);
+
+  useEffect(() => {
+    console.debug("map mounted");
     reloadData();
+    return () => {
+      console.debug("map unmounted");
+    };
   }, []);
 
   useEffect(() => {
-    console.debug("useEffect: add canvas events");
-
+    console.debug("adding canvas events...");
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -92,7 +127,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
     let mouseX: number;
     let mouseY: number;
 
-    canvas.addEventListener("mousedown", (event) => {
+    const onMouseDown = (event: MouseEvent) => {
       event.preventDefault();
 
       mouseX = event.clientX;
@@ -123,6 +158,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
             userPosition: userPositionRef.current,
             shouldGuide: shouldGuideRef.current,
             runwayName: runwayNameRef.current,
+            settings: settingsRef.current,
           },
           canvasMouseX,
           canvasMouseY
@@ -135,16 +171,16 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
 
         redraw();
       }
-    });
+    };
 
-    canvas.addEventListener("mouseup", (event) => {
+    const onMouseUp = (event: MouseEvent) => {
       event.preventDefault();
 
       isDraggingLeft = false;
       isDraggingRight = false;
-    });
+    };
 
-    canvas.addEventListener("mousemove", (event) => {
+    const onMouseMove = (event: MouseEvent) => {
       event.preventDefault();
 
       if (!centerPositionRef.current) {
@@ -177,6 +213,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
             userPosition: userPositionRef.current,
             shouldGuide: shouldGuideRef.current,
             runwayName: runwayNameRef.current,
+            settings: settingsRef.current,
           },
           canvasMouseX,
           canvasMouseY
@@ -189,21 +226,29 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
 
         redraw();
       }
-    });
+    };
 
-    canvas.addEventListener(
-      "wheel",
-      (event) => {
-        const deltaY = event.deltaY;
+    const onWheel = (event: WheelEvent) => {
+      const deltaY = event.deltaY;
 
-        if (deltaY < 0) {
-          zoomIn();
-        } else if (deltaY > 0) {
-          zoomOut();
-        }
-      },
-      { passive: true }
-    );
+      if (deltaY < 0) {
+        zoomIn();
+      } else if (deltaY > 0) {
+        zoomOut();
+      }
+    };
+
+    canvas.addEventListener("mousedown", onMouseDown);
+    canvas.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mousemove", onMouseMove);
+    canvas.addEventListener("wheel", onWheel, { passive: true });
+
+    return () => {
+      canvas.removeEventListener("mousedown", onMouseDown);
+      canvas.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mousemove", onMouseMove);
+      canvas.removeEventListener("wheel", onWheel);
+    };
   }, []);
 
   const redrawSimple = () => redraw(true);
@@ -234,6 +279,7 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
           userPosition: userPositionRef.current,
           shouldGuide: shouldGuideRef.current,
           runwayName: runwayNameRef.current,
+          settings: settingsRef.current,
         },
         lastKnownDataRef.current,
         isSimple
@@ -295,6 +341,37 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
     reloadData();
   };
 
+  const copyTaxiPathPosToClipboard = () => {
+    const data = lastKnownDataRef.current;
+
+    if (!data) {
+      return;
+    }
+
+    const name = taxiPathName.split(".")[0];
+    const index = parseInt(taxiPathName.split(".")[1]);
+
+    const taxiPath = data.taxiPaths.find(
+      (item) => item.name === name && item.index === index
+    );
+
+    if (!taxiPath) {
+      console.warn(`cannot copy taxi path ${taxiPathName} as not found`);
+      return;
+    }
+
+    const pos = {
+      lat: taxiPath.midpoint.lat,
+      long: taxiPath.midpoint.long,
+    };
+
+    const textForClipboard = JSON.stringify(pos, null, "  ");
+
+    navigator.clipboard.writeText(textForClipboard);
+
+    console.debug(`copied to clipboard`, textForClipboard);
+  };
+
   return (
     <>
       <Panel name="tools">
@@ -302,17 +379,28 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
         <input
           type="text"
           value={airportCode}
+          placeholder={defaultAirportCode}
           onChange={(e) => setAirportCode(e.target.value)}
         />
         <button onClick={() => visitNewAirportCode()}>Visit</button>
         <br />
-        Runway name (eg. 22 or 05L):
+        Target runway (eg. 05L):
         <input
           type="text"
           value={runwayName}
+          placeholder={defaultRunwayName}
           onChange={(e) => setRunwayName(e.target.value)}
         />
         <button onClick={() => toggleGuideUserToRunway()}>Guide</button>
+        <br />
+        Taxi path to get pos:
+        <input
+          type="text"
+          value={taxiPathName}
+          placeholder="A.5"
+          onChange={(e) => setTaxiPathName(e.target.value)}
+        />
+        <button onClick={() => copyTaxiPathPosToClipboard()}>Copy</button>
         <br />
         <button onClick={() => redraw()}>Re-Draw</button>
         <button onClick={() => zoomIn()}>Zoom In</button>
@@ -322,13 +410,47 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
         <br />
         Hold right click to move player marker
         <br />
+        <input
+          type="checkbox"
+          checked={settings.showGraph}
+          onChange={(e) => toggleSetting("showGraph")}
+        />{" "}
+        Show graph
+        <br />
+        <input
+          type="checkbox"
+          checked={settings.showAngles}
+          onChange={(e) => toggleSetting("showAngles")}
+        />{" "}
+        Show angles
+        <br />
+        <input
+          type="checkbox"
+          checked={settings.showTaxiPathLabels}
+          onChange={(e) => toggleSetting("showTaxiPathLabels")}
+        />{" "}
+        Show taxi path labels
+        <br />
+        <input
+          type="checkbox"
+          checked={settings.useRealisticWidths}
+          onChange={(e) => toggleSetting("useRealisticWidths")}
+        />{" "}
+        Use realistic path widths
+        <br />
+        <input
+          type="checkbox"
+          checked={settings.showRunwayIntersections}
+          onChange={(e) => toggleSetting("showRunwayIntersections")}
+        />{" "}
+        Show intersections
       </Panel>
       <Panel name="legend">
         Blue dot = center
         <br />
         Yellow dot = you
         <br />
-        Green dot = start/end of taxiway
+        Purple dot = graph node
         <br />
         Orange circle = runway intersection
         <br />

@@ -4,15 +4,22 @@ import {
   SubTaxiPath,
   getClosestGeoPosition,
 } from "./data";
-import { getGraphFromTaxiwaysAndRunways, getNodeName } from "./graph";
-import { getGeoPolygon, getMidpoint } from "./maths";
-import { Graph, dijkstra } from "./pathfinding";
+import {
+  getGraphFromTaxiwaysAndRunways,
+  getIsAngleTooSharp,
+  getNodeName,
+} from "./graph";
+import { getGeoMidpoint, getMidpoint } from "./maths";
+import { dijkstra } from "./pathfinding";
 import {
   Airport,
   CanvasPosition,
   GeoPosition,
+  Graph,
+  NodeWithData,
   Runway,
   RunwayEnd,
+  Settings,
   TaxiPath,
 } from "./types";
 
@@ -79,7 +86,7 @@ export function drawText(
   ctx: CanvasRenderingContext2D,
   text: string,
   pos: CanvasPosition,
-  color: string = "black",
+  color: string = "white",
   size: string = "12px",
   offset: number = 0,
   rotation: number = 0
@@ -174,6 +181,7 @@ interface AppState {
   userPosition: GeoPosition | null;
   shouldGuide: boolean;
   runwayName: string | null;
+  settings: Settings;
 }
 
 function convertGeoPositionToCanvasPosition(
@@ -266,9 +274,9 @@ function drawRunwayIntersection(
   drawHollowDot(
     state.ctx,
     pos,
-    "orange",
+    "rgb(150, 100, 50)",
     widthToCanvas(25, state.zoomLevel),
-    widthToCanvas(200, state.zoomLevel)
+    widthToCanvas(100, state.zoomLevel)
   );
 }
 
@@ -286,7 +294,11 @@ function drawTaxiPath(
     long: taxiPath.end_lonx,
   });
   const thickness = taxiPathWidthToCanvas(
-    isHighlighted ? taxiPath.width + 1 : taxiPath.width,
+    state.settings.useRealisticWidths
+      ? isHighlighted
+        ? taxiPath.width + 1
+        : taxiPath.width
+      : 10,
     state.zoomLevel
   );
 
@@ -301,7 +313,7 @@ function drawTaxiPath(
     thickness
   );
 
-  drawDot(state.ctx, start, colorStart, distanceToCanvas(5, state.zoomLevel));
+  // drawDot(state.ctx, start, colorStart, distanceToCanvas(5, state.zoomLevel));
 
   // if (taxiPath.name === 'A' && taxiPath.index === 4) {
   //   drawDot(state.ctx, start, 'rgb(255, 0, 0)', 10);
@@ -367,21 +379,15 @@ function drawTaxiPathLabel(
     return;
   }
 
-  const start = convertGeoPositionToCanvasPosition(state, {
-    lat: taxiPath.start_laty,
-    long: taxiPath.start_lonx,
-  });
-  const end = convertGeoPositionToCanvasPosition(state, {
-    lat: taxiPath.end_laty,
-    long: taxiPath.end_lonx,
-  });
-
-  const midpoint = getMidpoint(start.x, start.y, end.x, end.y);
+  const midpointPos = convertGeoPositionToCanvasPosition(
+    state,
+    taxiPath.midpoint
+  );
 
   drawText(
     state.ctx,
     `${taxiPath.name}.${taxiPath.index}`,
-    { x: midpoint.x - 5, y: midpoint.y + 5 },
+    { x: midpointPos.x - 5, y: midpointPos.y + 5 },
     "rgb(150, 150, 150)",
     isHighlighted ? "12px" : "10px"
   );
@@ -397,7 +403,7 @@ function drawTaxiPathForRoute(state: AppState, taxiPath: TaxiPath, i: number) {
     long: taxiPath.end_lonx,
   });
   const thickness = widthToCanvas(taxiPath.width, state.zoomLevel);
-  const color = "yellow";
+  const color = "rgb(100, 100, 0)";
 
   drawLine(state.ctx, start, end, color, thickness);
 }
@@ -414,13 +420,25 @@ const drawGraphStartAndEnd = (
     lat: (graph[startNodeName].source as TaxiPath).end_laty,
     long: (graph[startNodeName].source as TaxiPath).end_lonx,
   });
-  drawDot(state.ctx, start, "green", distanceToCanvas(20, state.zoomLevel));
+  drawHollowDot(
+    state.ctx,
+    start,
+    "green",
+    widthToCanvas(50, state.zoomLevel),
+    distanceToCanvas(20, state.zoomLevel)
+  );
 
   const end = convertGeoPositionToCanvasPosition(state, {
     lat: (graph[endNodeName].source as TaxiPath).end_laty,
     long: (graph[endNodeName].source as TaxiPath).end_lonx,
   });
-  drawDot(state.ctx, end, "red", distanceToCanvas(20, state.zoomLevel));
+  drawHollowDot(
+    state.ctx,
+    end,
+    "red",
+    widthToCanvas(50, state.zoomLevel),
+    distanceToCanvas(20, state.zoomLevel)
+  );
 };
 
 const getStartNodeName = (
@@ -476,6 +494,62 @@ const getEndNodeName = (
   return key;
 };
 
+const drawAngleBetweenNodes = (
+  state: AppState,
+  angle: number,
+  startTaxiPath: TaxiPath,
+  endTaxiPath: TaxiPath
+) => {
+  const midpoint = getGeoMidpoint(startTaxiPath.midpoint, endTaxiPath.midpoint);
+
+  const pos = convertGeoPositionToCanvasPosition(state, midpoint);
+
+  const isTooSharp = getIsAngleTooSharp(
+    startTaxiPath.name,
+    endTaxiPath.name,
+    angle
+  );
+
+  const start = convertGeoPositionToCanvasPosition(
+    state,
+    startTaxiPath.midpoint
+  );
+  const end = convertGeoPositionToCanvasPosition(state, endTaxiPath.midpoint);
+
+  drawLine(
+    state.ctx,
+    start,
+    end,
+    isTooSharp ? "rgba(100, 0, 0, 0.75)" : "rgba(0, 50, 0, 0.75)",
+    widthToCanvas(25, state.zoomLevel)
+  );
+
+  drawText(
+    state.ctx,
+    `${startTaxiPath.name}.${startTaxiPath.index} => ${endTaxiPath.name}.${endTaxiPath.index}`,
+    pos,
+    isTooSharp ? "red" : "white",
+    "10px"
+  );
+
+  drawText(
+    state.ctx,
+    `${angle.toFixed(1)}°`,
+    {
+      x: pos.x,
+      y: pos.y + 12,
+    },
+    isTooSharp ? "red" : "white",
+    "12px"
+  );
+};
+
+const drawGraphNode = (state: AppState, node: NodeWithData) => {
+  const canvasPos = convertGeoPositionToCanvasPosition(state, node.pos);
+
+  drawDot(state.ctx, canvasPos, "purple", widthToCanvas(50, state.zoomLevel));
+};
+
 export const draw = async (
   state: AppState,
   { airport, runways, runwayEnds, taxiPaths, runwayIntersections }: Data,
@@ -520,17 +594,26 @@ export const draw = async (
     drawGraphStartAndEnd(state, graph, startNodeName, endNodeName);
   }
 
-  for (const runwayIntersection of runwayIntersections) {
-    drawRunwayIntersection(state, runwayIntersection);
+  if (graph && state.settings.showGraph) {
+    for (const key in graph) {
+      const node = graph[key];
+      drawGraphNode(state, node);
+    }
+  }
+
+  if (state.settings.showRunwayIntersections) {
+    for (const runwayIntersection of runwayIntersections) {
+      drawRunwayIntersection(state, runwayIntersection);
+    }
   }
 
   for (const taxiPath of taxiPaths) {
     drawTaxiPath(state, taxiPath);
   }
 
-  for (const taxiPath of taxiPaths) {
-    drawTaxiPathDots(state, taxiPath);
-  }
+  // for (const taxiPath of taxiPaths) {
+  //   drawTaxiPathDots(state, taxiPath);
+  // }
 
   if (state.userPosition !== null) {
     // const subTaxiPaths = getSubTaxiPaths(taxiPaths);
@@ -578,14 +661,14 @@ export const draw = async (
           for (const pathName of result.path) {
             // await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const taxiPath = graph[pathName].source;
+            const taxiPath = graph[pathName].source as TaxiPath;
             drawTaxiPathForRoute(state, taxiPath, i);
 
             const pos = convertGeoPositionToCanvasPosition(state, {
-              lat: (taxiPath as TaxiPath).start_laty,
-              long: (taxiPath as TaxiPath).start_lonx,
+              lat: taxiPath.start_laty,
+              long: taxiPath.start_lonx,
             });
-            drawDot(ctx, pos, "yellow", distanceToCanvas(10, state.zoomLevel));
+            drawDot(ctx, pos, "yellow", distanceToCanvas(5, state.zoomLevel));
             i++;
 
             drawText(ctx, pathName, { x: 0, y: 20 * i }, "black");
@@ -599,8 +682,38 @@ export const draw = async (
     }
   }
 
-  for (const taxiPath of taxiPaths) {
-    drawTaxiPathLabel(state, taxiPath);
+  if (graph && state.settings.showAngles) {
+    const drawnRelationships: [string, string][] = [];
+
+    for (const key in graph) {
+      const node = graph[key];
+      const taxiPath = node.source as TaxiPath;
+
+      for (const neighborKey in node.neighborAngles) {
+        const neighbor = graph[neighborKey];
+        const neighborTaxiPath = neighbor.source as TaxiPath;
+        const angle = node.neighborAngles[neighborKey];
+
+        const alreadyDrawn = drawnRelationships.find(
+          (relationship) =>
+            relationship.includes(key) && relationship.includes(neighborKey)
+        );
+
+        if (alreadyDrawn) {
+          continue;
+        }
+
+        drawAngleBetweenNodes(state, angle, taxiPath, neighborTaxiPath);
+
+        drawnRelationships.push([key, neighborKey]);
+      }
+    }
+  }
+
+  if (state.settings.showTaxiPathLabels) {
+    for (const taxiPath of taxiPaths) {
+      drawTaxiPathLabel(state, taxiPath);
+    }
   }
 
   for (const runwayEnd of runwayEnds) {

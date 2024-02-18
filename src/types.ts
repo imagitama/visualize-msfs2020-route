@@ -53,6 +53,7 @@ export interface SourceTaxiPath {
 
 export interface TaxiPath extends SourceTaxiPath {
   index: number;
+  midpoint: GeoPosition;
 }
 
 export interface GeoPosition {
@@ -71,3 +72,30 @@ export interface CanvasPosition {
   x: number;
   y: number;
 }
+
+export interface Settings {
+  showGraph: boolean;
+  showTaxiPathLabels: boolean;
+  showRunwayIntersections: boolean;
+  showAngles: boolean;
+  useRealisticWidths: boolean;
+}
+
+// the bare minimum needed for pathfinding
+export interface Node {
+  neighbors: {
+    [name: string]: number; // distance
+  };
+}
+
+export interface NodeWithData extends Node {
+  pos: GeoPosition;
+  source: any;
+  neighborAngles: {
+    [name: string]: number; // degrees
+  };
+}
+
+export type Graph = {
+  [nodeName: string]: NodeWithData;
+};

@@ -6,6 +6,7 @@ import {
   isGeoPositionInsideGeoPolygon,
   GeoPolygon,
   getGeoPolygon,
+  getGeoMidpoint,
 } from "./maths";
 import { Airport, GeoPosition, Runway, RunwayEnd, TaxiPath } from "./types";
 
@@ -64,9 +65,17 @@ export const getData = async (airportCode: string): Promise<Data> => {
     `SELECT * FROM taxi_path WHERE airport_id = '${airport.airport_id}'`
   );
 
+  const taxiPathsWithMidpoints = taxiPaths.map((taxiPath) => ({
+    ...taxiPath,
+    midpoint: getGeoMidpoint(
+      { lat: taxiPath.start_laty, long: taxiPath.start_lonx },
+      { lat: taxiPath.end_laty, long: taxiPath.end_lonx }
+    ),
+  }));
+
   const indexByLetter: { [letter: string]: number } = {};
 
-  const taxiPathsWithIndexes = taxiPaths
+  const taxiPathsWithIndexes = taxiPathsWithMidpoints
     .filter((i) => i.name)
     .map((taxiPath) => {
       const nameToUse = taxiPath.name;
@@ -84,6 +93,12 @@ export const getData = async (airportCode: string): Promise<Data> => {
         index,
       };
     });
+
+  for (const taxiPath of taxiPathsWithIndexes) {
+    if (taxiPath.name === "E" && taxiPath.index === 10) {
+      console.debug("E10", taxiPath);
+    }
+  }
 
   console.debug(
     `found ${taxiPathsWithIndexes.length} taxi paths`,

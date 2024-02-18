@@ -1,9 +1,38 @@
-import { getDistance, isLatLongEqual } from "./maths";
-import { Graph } from "./pathfinding";
-import { RunwayEnd, TaxiPath } from "./types";
+import {
+  getAngleBetweenLines,
+  getDistance,
+  getGeoDistance,
+  getGeoMidpoint,
+  isLatLongEqual,
+} from "./maths";
+import { Graph, RunwayEnd, TaxiPath } from "./types";
 
 export const getNodeName = (name: string, index: number): string =>
   `${name}.${index}.end`;
+
+export const getIsAngleTooSharp = (
+  taxiPathNameA: string,
+  taxiPathNameB: string,
+  angle: number
+): boolean => {
+  // if (angle > 90) {
+  //   return false;
+  // }
+
+  if (taxiPathNameA === taxiPathNameB) {
+    if (angle > 0) {
+      return false;
+    }
+  }
+
+  // return true;
+
+  if (angle > 90) {
+    return false;
+  }
+
+  return true;
+};
 
 export const getGraphFromTaxiwaysAndRunways = (
   taxiPaths: TaxiPath[],
@@ -28,6 +57,7 @@ export const getGraphFromTaxiwaysAndRunways = (
 
     const key = getNodeName(taxiPath.name, taxiPath.index);
     const neighbors: { [key: string]: number } = {};
+    const neighborAngles: { [key: string]: number } = {};
 
     for (const taxiPathToCompare of taxiPaths) {
       if (!taxiPathToCompare.name) {
@@ -77,58 +107,97 @@ export const getGraphFromTaxiwaysAndRunways = (
         );
 
         let distance = -1;
+        let angle = 9999;
 
-        if (neighborType.startWithStart) {
-          distance = getDistance(
-            taxiPath.end_laty,
-            taxiPath.end_lonx,
-            taxiPathToCompare.start_laty,
-            taxiPathToCompare.start_lonx
-          );
-        } else if (neighborType.endWithStart) {
-          distance = getDistance(
-            taxiPath.start_laty,
-            taxiPath.start_lonx,
-            taxiPathToCompare.start_laty,
-            taxiPathToCompare.start_lonx
-          );
-        } else if (neighborType.startWithEnd) {
-          distance = getDistance(
-            taxiPath.start_laty,
-            taxiPath.start_lonx,
-            taxiPathToCompare.start_laty,
-            taxiPathToCompare.start_lonx
-          );
-        } else if (neighborType.endWithEnd) {
-          distance = getDistance(
-            taxiPath.end_laty,
-            taxiPath.end_lonx,
-            taxiPathToCompare.start_laty,
-            taxiPathToCompare.start_lonx
-          );
+        angle = getAngleBetweenLines(
+          [
+            {
+              lat: taxiPath.start_laty,
+              long: taxiPath.start_lonx,
+            },
+            {
+              lat: taxiPath.end_laty,
+              long: taxiPath.end_lonx,
+            },
+          ],
+          [
+            {
+              lat: taxiPathToCompare.start_laty,
+              long: taxiPathToCompare.start_lonx,
+            },
+            {
+              lat: taxiPathToCompare.end_laty,
+              long: taxiPathToCompare.end_lonx,
+            },
+          ]
+        );
+
+        distance = getGeoDistance(
+          taxiPath.midpoint,
+          taxiPathToCompare.midpoint
+        );
+
+        // if (neighborType.startWithStart) {
+        //   distance = getDistance(
+        //     taxiPath.end_laty,
+        //     taxiPath.end_lonx,
+        //     taxiPathToCompare.start_laty,
+        //     taxiPathToCompare.start_lonx
+        //   );
+        // } else if (neighborType.endWithStart) {
+        //   distance = getDistance(
+        //     taxiPath.start_laty,
+        //     taxiPath.start_lonx,
+        //     taxiPathToCompare.start_laty,
+        //     taxiPathToCompare.start_lonx
+        //   );
+        // } else if (neighborType.startWithEnd) {
+        //   distance = getDistance(
+        //     taxiPath.start_laty,
+        //     taxiPath.start_lonx,
+        //     taxiPathToCompare.start_laty,
+        //     taxiPathToCompare.start_lonx
+        //   );
+        // } else if (neighborType.endWithEnd) {
+        //   distance = getDistance(
+        //     taxiPath.end_laty,
+        //     taxiPath.end_lonx,
+        //     taxiPathToCompare.start_laty,
+        //     taxiPathToCompare.start_lonx
+        //   );
+        // }
+
+        if (angle < 0 || angle > 360) {
+          throw new Error(`Angle is invalid: ${angle}`);
         }
 
         if (distance <= 0) {
-          throw new Error(`Distance is 0 or less`);
+          throw new Error(`Distance is invalid: ${distance}`);
         }
 
-        if (key === "A.1") {
-          console.debug(
-            `A.1`,
-            neighborKey,
-            distance,
-            neighbors,
-            Object.values(neighborType)
-          );
-        }
+        neighborAngles[neighborKey] = angle;
+
+        // if (getIsAngleTooSharp(taxiPath.name, taxiPathToCompare.name, angle)) {
+        //   continue;
+        // }
+
+        // if (key === "A.1") {
+        //   console.debug(
+        //     `A.1`,
+        //     neighborKey,
+        //     distance,
+        //     neighbors,
+        //     Object.values(neighborType)
+        //   );
+        // }
 
         neighbors[neighborKey] = distance;
       }
     }
 
-    if (!Object.keys(neighbors).length) {
-      throw new Error(`Taxi path ${taxiPath.name} does not have any neighbors`);
-    }
+    // if (!Object.keys(neighbors).length) {
+    //   throw new Error(`Taxi path ${taxiPath.name} does not have any neighbors`);
+    // }
 
     for (const runwayEnd of runwayEnds) {
       const distance = getDistance(
@@ -144,8 +213,11 @@ export const getGraphFromTaxiwaysAndRunways = (
     }
 
     graph[key] = {
-      source: taxiPath,
       neighbors,
+      // extra
+      pos: taxiPath.midpoint,
+      source: taxiPath,
+      neighborAngles,
     };
   }
 
@@ -175,8 +247,10 @@ export const getGraphFromTaxiwaysAndRunways = (
     // TODO: Check against other runways
 
     graph[key] = {
+      pos: { lat: runwayEnd.laty, long: runwayEnd.lonx },
       source: runwayEnd,
       neighbors,
+      neighborAngles: {},
     };
   }
 

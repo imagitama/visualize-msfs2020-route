@@ -21,6 +21,22 @@ export function getMidpoint(
   };
 }
 
+export function getGeoMidpoint(
+  startPos: GeoPosition,
+  endPos: GeoPosition
+): GeoPosition {
+  const { x, y } = getMidpoint(
+    startPos.lat,
+    startPos.long,
+    endPos.lat,
+    endPos.long
+  );
+  return {
+    lat: x,
+    long: y,
+  };
+}
+
 export function getDistance(
   lat1: number,
   lon1: number,
@@ -44,6 +60,9 @@ export function getDistance(
 
   return distance;
 }
+
+export const getGeoDistance = (pos1: GeoPosition, pos2: GeoPosition): number =>
+  getDistance(pos1.lat, pos1.long, pos2.lat, pos2.long);
 
 function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
@@ -223,3 +242,36 @@ export const getGeoPolygon = (
   // Return the rectangle as a GeoPolygon
   return [corner1, corner2, corner3, corner4];
 };
+
+export function getAngleBetweenLines(
+  line1: [GeoPosition, GeoPosition],
+  line2: [GeoPosition, GeoPosition]
+): number {
+  // Calculate direction vectors
+  const vector1 = {
+    x: line1[1].long - line1[0].long,
+    y: line1[1].lat - line1[0].lat,
+  };
+  const vector2 = {
+    x: line2[1].long - line2[0].long,
+    y: line2[1].lat - line2[0].lat,
+  };
+
+  // Calculate dot product
+  const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
+
+  // Calculate magnitudes
+  const magnitude1 = Math.sqrt(vector1.x ** 2 + vector1.y ** 2);
+  const magnitude2 = Math.sqrt(vector2.x ** 2 + vector2.y ** 2);
+
+  // Calculate the cosine of the angle
+  const cosAngle = dotProduct / (magnitude1 * magnitude2);
+
+  // Calculate the angle in radians
+  const angleInRadians = Math.acos(cosAngle);
+
+  // Convert the angle to degrees
+  const angleInDegrees = (angleInRadians * 180) / Math.PI;
+
+  return angleInDegrees;
+}

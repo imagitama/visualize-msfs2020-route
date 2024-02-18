@@ -1,13 +1,4 @@
-export interface Node {
-  source: any;
-  neighbors: {
-    [name: string]: number; // distance
-  };
-}
-
-export type Graph = {
-  [nodeName: string]: Node;
-};
+import { Graph } from "./types";
 
 export const dijkstra = (
   graph: Graph,
