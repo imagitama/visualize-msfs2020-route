@@ -555,11 +555,11 @@ const drawGraphNode = (
       state.ctx,
       neighborKey,
       {
-        x: canvasPos.x + 10,
-        y: canvasPos.y + i * 10,
+        x: canvasPos.x + 30,
+        y: canvasPos.y + 20 + i * 10,
       },
       "purple",
-      "10px"
+      "8px"
     );
     i++;
   }
