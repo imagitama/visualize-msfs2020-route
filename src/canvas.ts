@@ -234,7 +234,12 @@ function drawRunway(state: AppState, runway: Runway) {
     convertGeoPositionToCanvasPosition(state, pos)
   );
 
-  console.debug(`draw runway`, { geoPoints: runway.corners }, { canvasPoints });
+  console.debug(
+    `draw runway`,
+    runway.heading,
+    { geoPoints: runway.corners },
+    { canvasPoints }
+  );
 
   // TODO: Bring this back - for some reason the polygon is skewed weirdly
   drawPolygon(state.ctx, canvasPoints, "rgb(75, 50, 50)");

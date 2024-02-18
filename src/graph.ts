@@ -42,8 +42,8 @@ enum ComparisonType {
   EndWithStart,
 }
 
-const compareThem = (
-  graphByRef: Graph,
+const insertNodesIntoGraph = (
+  graphByRef: Graph, // this must be a reference to the original graph object as manipulate it "in place"
   originalTaxiPath: TaxiPath,
   otherTaxiPath: TaxiPath,
   type: ComparisonType
@@ -73,8 +73,8 @@ const compareThem = (
   if (getIsGeoPositionEqual(originalPos, targetPos)) {
     const nodePos = originalPos;
 
-    const existingNodeResult = Object.entries(graphByRef).find(
-      ([nodeName, node]) => getIsGeoPositionEqual(nodePos, node.pos)
+    const existingNodeResult = Object.entries(graphByRef).find(([, node]) =>
+      getIsGeoPositionEqual(nodePos, node.pos)
     );
 
     const handleEndNode = (
@@ -100,7 +100,7 @@ const compareThem = (
       }
 
       const otherEndExistingNodeResult = Object.entries(graphByRef).find(
-        ([nodeName, node]) => getIsGeoPositionEqual(otherEndPos, node.pos)
+        ([, node]) => getIsGeoPositionEqual(otherEndPos, node.pos)
       );
 
       let distanceBetweenNodes = -1;
@@ -108,7 +108,6 @@ const compareThem = (
       if (otherEndExistingNodeResult) {
         const existingNodeName = otherEndExistingNodeResult[0];
         const existingNode = otherEndExistingNodeResult[1];
-        // const [otherNodeName, distance] = handleEndNode(existingNodeName);
 
         otherNodeName = existingNodeName;
         distanceBetweenNodes = getGeoDistance(firstNodePos, existingNode.pos);
@@ -128,12 +127,6 @@ const compareThem = (
         };
 
         graphByRef[otherEndCreatedNodeName] = otherEndCreatedNode;
-
-        console.debug(
-          `created other end`,
-          otherEndCreatedNodeName,
-          distanceBetweenNodes
-        );
 
         otherNodeName = otherEndCreatedNodeName;
       }
@@ -184,6 +177,25 @@ export const getGraphFromTaxiwaysAndRunways = (
 ): Graph => {
   const graph: Graph = {};
 
+  /**
+   * How this works:
+   *
+   * A node is generally a "join" between the ends of two taxi paths (not taxiways). Remember: nodes != taxipaths.
+   * The name of each node is its long,lat
+   * It assumes each join position is identical (which it appears to be).
+   * When you loop over all taxi paths, some taxi paths will connect to either the start or end of another.
+   * So we loop over all taxi paths,
+   * Then loop over all other taxi paths twice - once for the start of the current one, one for the end.
+   *
+   * The dijkstra only needs the distance between two nodes. Each node must track its direct neighbors.
+   * For taxipaths a direct neighbor would be the connecting taxipath or some other path (runway, parking, etc.).
+   * So inside these loops we must create new nodes for the other ends of each taxi path.
+   *
+   * TODO:
+   * - exclude node relationships if their angle is terrible/unrealistic
+   * - add nodes for runways, parking, gates, etc.
+   */
+
   for (const taxiPath of taxiPaths) {
     if (!getIsTaxiPathTaxiway(taxiPath)) {
       continue;
@@ -198,13 +210,13 @@ export const getGraphFromTaxiwaysAndRunways = (
         continue;
       }
 
-      compareThem(
+      insertNodesIntoGraph(
         graph,
         taxiPath,
         taxiPathToCompare,
         ComparisonType.StartWithStart
       );
-      compareThem(
+      insertNodesIntoGraph(
         graph,
         taxiPath,
         taxiPathToCompare,
@@ -213,24 +225,21 @@ export const getGraphFromTaxiwaysAndRunways = (
     }
 
     for (const taxiPathToCompare of taxiPaths) {
-      if (!taxiPathToCompare.name) {
+      if (!getIsTaxiPathTaxiway(taxiPathToCompare)) {
         continue;
       }
 
-      if (
-        taxiPath.name === taxiPathToCompare.name &&
-        taxiPath.index === taxiPathToCompare.index
-      ) {
+      if (getIsTaxiPathEqual(taxiPath, taxiPathToCompare)) {
         continue;
       }
 
-      compareThem(
+      insertNodesIntoGraph(
         graph,
         taxiPath,
         taxiPathToCompare,
         ComparisonType.EndWithStart
       );
-      compareThem(
+      insertNodesIntoGraph(
         graph,
         taxiPath,
         taxiPathToCompare,
