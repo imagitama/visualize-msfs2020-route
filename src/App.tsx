@@ -95,7 +95,11 @@ export default function App() {
         <br />
         <br />
         <button onClick={() => loadSelectedFile()}>Load</button>
+        <br />
+        <br />
         <button onClick={() => loadExampleFile()}>Load Example Data</button>
+        <br />
+        <br />
         {isLoading && <>Loading (takes a few seconds)...</>}
         <br />
         <br />
