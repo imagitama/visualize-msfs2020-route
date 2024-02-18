@@ -17,7 +17,7 @@ export interface RunwayEnd {
   laty: number;
 }
 
-export interface Runway {
+export interface SourceRunway {
   runway_id: number;
   airport_id: number;
   altitude: number; // feet
@@ -32,12 +32,15 @@ export interface Runway {
   secondary_laty: number;
   primary_end_id: number;
   secondary_end_id: number;
-  // custom
+}
+
+export interface Runway extends SourceRunway {
+  corners: GeoPosition[];
   runwayEnd_1: RunwayEnd;
   runwayEnd_2: RunwayEnd;
 }
 
-export interface TaxiPath {
+export interface SourceTaxiPath {
   taxi_path_id: number;
   airport_id: number;
   name: string; // "A"
@@ -46,7 +49,9 @@ export interface TaxiPath {
   start_laty: number;
   end_lonx: number;
   end_laty: number;
-  // custom
+}
+
+export interface TaxiPath extends SourceTaxiPath {
   index: number;
 }
 

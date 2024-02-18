@@ -33,6 +33,15 @@ export const getData = async (airportCode: string): Promise<Data> => {
 
   console.debug(`found ${runways.length} runways`, runways);
 
+  const runwaysWithCorners = runways.map((runway) => ({
+    ...runway,
+    corners: getGeoPolygon(
+      { lat: runway.primary_laty, long: runway.primary_lonx },
+      { lat: runway.secondary_laty, long: runway.secondary_lonx },
+      runway.width
+    ),
+  }));
+
   const runwayEnds = await query<RunwayEnd>(
     `SELECT * FROM runway_end WHERE runway_end_id IN (${runways
       .reduce<number[]>(
@@ -45,7 +54,7 @@ export const getData = async (airportCode: string): Promise<Data> => {
 
   console.debug(`found ${runwayEnds.length} runway ends`, runwayEnds);
 
-  const runwaysWithEnds = runways.map((runway) => ({
+  const runwaysWithEnds = runwaysWithCorners.map((runway) => ({
     ...runway,
     runwayEnd_1: getRunwayEndById(runwayEnds, runway.primary_end_id),
     runwayEnd_2: getRunwayEndById(runwayEnds, runway.secondary_end_id),
@@ -83,7 +92,6 @@ export const getData = async (airportCode: string): Promise<Data> => {
 
   const runwayIntersections = getRunwayIntersections(
     runwaysWithEnds,
-    runwayEnds,
     taxiPathsWithIndexes
   );
 
@@ -144,40 +152,15 @@ const getDoesTaxiPathIntersectRunway = (
 
 const getRunwayIntersections = (
   runways: Runway[],
-  runwayEnds: RunwayEnd[],
   taxiPaths: TaxiPath[]
 ): RunwayIntersection[] => {
-  const runwayEndGroups: [Runway, RunwayEnd, RunwayEnd, GeoPolygon][] = [];
-
   const intersections: RunwayIntersection[] = [];
 
-  for (const runway of runways) {
-    const start = runwayEnds.find(
-      (runwayEnd) => runwayEnd.runway_end_id === runway.primary_end_id
-    )!;
-    const end = runwayEnds.find(
-      (runwayEnd) => runwayEnd.runway_end_id === runway.secondary_end_id
-    )!;
-
-    const runwayPolygon = getGeoPolygon(
-      { lat: runway.primary_laty, long: runway.primary_lonx },
-      { lat: runway.secondary_laty, long: runway.secondary_lonx },
-      runway.width
-    );
-
-    runwayEndGroups.push([runway, start, end, runwayPolygon]);
-  }
-
   for (const taxiPath of taxiPaths) {
-    for (const [
-      runway,
-      runwayStart,
-      runwayEnd,
-      runwayPolygon,
-    ] of runwayEndGroups) {
+    for (const runway of runways) {
       const { start, end } = getDoesTaxiPathIntersectRunway(
         taxiPath,
-        runwayPolygon
+        runway.corners
       );
 
       if ((start === true || end === true) && start !== end) {

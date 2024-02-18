@@ -222,38 +222,25 @@ function drawPolygon(
 }
 
 function drawRunway(state: AppState, runway: Runway) {
-  const startGeoPos = {
-    lat: runway.runwayEnd_1.laty,
-    long: runway.runwayEnd_1.lonx,
-  };
-  const endGeoPos = {
-    lat: runway.runwayEnd_2.laty,
-    long: runway.runwayEnd_2.lonx,
-  };
-
-  // TODO: Use same width here as for getting runway intersections
-  // TODO: Work out why * 3 is necessary to make it look correct
-  const geoPoints = getGeoPolygon(startGeoPos, endGeoPos, runway.width * 3);
-
-  const canvasPoints = geoPoints.map((pos) =>
+  const canvasPoints = runway.corners.map((pos) =>
     convertGeoPositionToCanvasPosition(state, pos)
   );
 
-  console.debug(`draw runway`, { geoPoints }, { canvasPoints });
+  console.debug(`draw runway`, { geoPoints: runway.corners }, { canvasPoints });
 
   // TODO: Bring this back - for some reason the polygon is skewed weirdly
-  // drawPolygon(state.ctx, canvasPoints, "rgb(75, 50, 50)");
+  drawPolygon(state.ctx, canvasPoints, "rgb(75, 50, 50)");
 
-  const startPos = convertGeoPositionToCanvasPosition(state, startGeoPos);
-  const endPos = convertGeoPositionToCanvasPosition(state, endGeoPos);
+  // const startPos = convertGeoPositionToCanvasPosition(state, startGeoPos);
+  // const endPos = convertGeoPositionToCanvasPosition(state, endGeoPos);
 
-  drawLine(
-    state.ctx,
-    startPos,
-    endPos,
-    "rgb(75, 50, 50",
-    widthToCanvas(1000, state.zoomLevel)
-  );
+  // drawLine(
+  //   state.ctx,
+  //   startPos,
+  //   endPos,
+  //   "rgb(75, 50, 50",
+  //   widthToCanvas(1000, state.zoomLevel)
+  // );
 }
 
 function drawRunwayEnd(state: AppState, runwayEnd: RunwayEnd) {
