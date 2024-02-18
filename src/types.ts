@@ -8,13 +8,17 @@ export interface Airport {
   laty: number;
 }
 
-export interface RunwayEnd {
+export interface SourceRunwayEnd {
   runway_end_id: number;
   name: string; // "23"
   heading: number;
   altitude: number;
   lonx: number;
   laty: number;
+}
+
+export interface RunwayEnd extends SourceRunwayEnd {
+  pos: GeoPosition;
 }
 
 export interface SourceRunway {
@@ -53,6 +57,8 @@ export interface SourceTaxiPath {
 
 export interface TaxiPath extends SourceTaxiPath {
   index: number;
+  startPos: GeoPosition;
+  endPos: GeoPosition;
   midpoint: GeoPosition;
 }
 
@@ -88,9 +94,12 @@ export interface Node {
   };
 }
 
+type NodeIntersection = [string, string];
+
 export interface NodeWithData extends Node {
   pos: GeoPosition;
-  source: any;
+  // source: any;
+  intersections: NodeIntersection[];
   neighborAngles: {
     [name: string]: number; // degrees
   };

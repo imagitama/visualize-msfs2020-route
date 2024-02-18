@@ -4,17 +4,17 @@ import { GeoPosition, Settings } from "./types";
 import { Data, getData } from "./data";
 
 const maxZoomLevel = 20;
-// const defaultZoomLevel = 5;
 // const overrideCenterPosition = null;
 const overrideCenterPosition = {
-  lat: 35.94717597961426,
-  long: -112.15071868896484,
+  lat: 35.96139717102051,
+  long: -112.13677597045898,
 };
+// const defaultZoomLevel = 5;
 const defaultZoomLevel = 10;
 const defaultAirportCode = "KGCN";
 const defaultRunwayName = "03";
 const defaultSettings: Settings = {
-  showGraph: true,
+  showGraph: false,
   showTaxiPathLabels: true,
   showRunwayIntersections: true,
   showAngles: true,
@@ -69,10 +69,15 @@ export const Map = ({ backToMainMenu }: { backToMainMenu: () => void }) => {
         return;
       }
 
-      const newCenterPosition = overrideCenterPosition || {
-        lat: data.airport.laty,
-        long: data.airport.lonx,
-      };
+      const newCenterPosition = overrideCenterPosition
+        ? {
+            lat: overrideCenterPosition.lat - 0.0001,
+            long: overrideCenterPosition.long + 0.0001,
+          }
+        : {
+            lat: data.airport.laty,
+            long: data.airport.lonx,
+          };
 
       centerPositionRef.current = {
         ...newCenterPosition,

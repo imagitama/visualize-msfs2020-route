@@ -7,6 +7,9 @@ export const isLatLongEqual = (
   long2: number
 ): boolean => lat1 === lat2 && long1 === long2;
 
+export const getIsGeoPositionEqual = (pos1: GeoPosition, pos2: GeoPosition) =>
+  pos1.lat === pos2.lat && pos1.long === pos2.long;
+
 export function getMidpoint(
   startX: number,
   startY: number,

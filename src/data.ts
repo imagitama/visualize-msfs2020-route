@@ -55,17 +55,31 @@ export const getData = async (airportCode: string): Promise<Data> => {
 
   console.debug(`found ${runwayEnds.length} runway ends`, runwayEnds);
 
+  const runwayEndsWithPos = runwayEnds.map((runwayEnd) => ({
+    ...runwayEnd,
+    pos: {
+      lat: runwayEnd.laty,
+      long: runwayEnd.lonx,
+    },
+  }));
+
   const runwaysWithEnds = runwaysWithCorners.map((runway) => ({
     ...runway,
-    runwayEnd_1: getRunwayEndById(runwayEnds, runway.primary_end_id),
-    runwayEnd_2: getRunwayEndById(runwayEnds, runway.secondary_end_id),
+    runwayEnd_1: getRunwayEndById(runwayEndsWithPos, runway.primary_end_id),
+    runwayEnd_2: getRunwayEndById(runwayEndsWithPos, runway.secondary_end_id),
   }));
 
   const taxiPaths = await query<TaxiPath>(
     `SELECT * FROM taxi_path WHERE airport_id = '${airport.airport_id}'`
   );
 
-  const taxiPathsWithMidpoints = taxiPaths.map((taxiPath) => ({
+  const taxiPathsWithBetterPos = taxiPaths.map((taxiPath) => ({
+    ...taxiPath,
+    startPos: { lat: taxiPath.start_laty, long: taxiPath.start_lonx },
+    endPos: { lat: taxiPath.end_laty, long: taxiPath.end_lonx },
+  }));
+
+  const taxiPathsWithMidpoints = taxiPathsWithBetterPos.map((taxiPath) => ({
     ...taxiPath,
     midpoint: getGeoMidpoint(
       { lat: taxiPath.start_laty, long: taxiPath.start_lonx },
@@ -113,7 +127,7 @@ export const getData = async (airportCode: string): Promise<Data> => {
   return {
     airport,
     runways: runwaysWithEnds,
-    runwayEnds,
+    runwayEnds: runwayEndsWithPos,
     runwayIntersections,
     taxiPaths: taxiPathsWithIndexes,
   };

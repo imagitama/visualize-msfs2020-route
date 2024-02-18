@@ -393,16 +393,14 @@ function drawTaxiPathLabel(
   );
 }
 
-function drawTaxiPathForRoute(state: AppState, taxiPath: TaxiPath, i: number) {
-  const start = convertGeoPositionToCanvasPosition(state, {
-    lat: taxiPath.start_laty,
-    long: taxiPath.start_lonx,
-  });
-  const end = convertGeoPositionToCanvasPosition(state, {
-    lat: taxiPath.end_laty,
-    long: taxiPath.end_lonx,
-  });
-  const thickness = widthToCanvas(taxiPath.width, state.zoomLevel);
+function drawGuideLine(
+  state: AppState,
+  nodeA: NodeWithData,
+  nodeB: NodeWithData
+) {
+  const start = convertGeoPositionToCanvasPosition(state, nodeA.pos);
+  const end = convertGeoPositionToCanvasPosition(state, nodeB.pos);
+  const thickness = widthToCanvas(50, state.zoomLevel);
   const color = "rgb(100, 100, 0)";
 
   drawLine(state.ctx, start, end, color, thickness);
@@ -416,50 +414,44 @@ const drawGraphStartAndEnd = (
 ) => {
   console.debug(`graph`, graph, `${startNodeName} => ${endNodeName}`);
 
-  const start = convertGeoPositionToCanvasPosition(state, {
-    lat: (graph[startNodeName].source as TaxiPath).end_laty,
-    long: (graph[startNodeName].source as TaxiPath).end_lonx,
-  });
-  drawHollowDot(
-    state.ctx,
-    start,
-    "green",
-    widthToCanvas(50, state.zoomLevel),
-    distanceToCanvas(20, state.zoomLevel)
-  );
+  // const start = convertGeoPositionToCanvasPosition(state, {
+  //   lat: (graph[startNodeName].source as TaxiPath).end_laty,
+  //   long: (graph[startNodeName].source as TaxiPath).end_lonx,
+  // });
+  // drawHollowDot(
+  //   state.ctx,
+  //   start,
+  //   "green",
+  //   widthToCanvas(50, state.zoomLevel),
+  //   distanceToCanvas(20, state.zoomLevel)
+  // );
 
-  const end = convertGeoPositionToCanvasPosition(state, {
-    lat: (graph[endNodeName].source as TaxiPath).end_laty,
-    long: (graph[endNodeName].source as TaxiPath).end_lonx,
-  });
-  drawHollowDot(
-    state.ctx,
-    end,
-    "red",
-    widthToCanvas(50, state.zoomLevel),
-    distanceToCanvas(20, state.zoomLevel)
-  );
+  // const end = convertGeoPositionToCanvasPosition(state, {
+  //   lat: (graph[endNodeName].source as TaxiPath).end_laty,
+  //   long: (graph[endNodeName].source as TaxiPath).end_lonx,
+  // });
+  // drawHollowDot(
+  //   state.ctx,
+  //   end,
+  //   "red",
+  //   widthToCanvas(50, state.zoomLevel),
+  //   distanceToCanvas(20, state.zoomLevel)
+  // );
 };
 
 const getStartNodeName = (
-  taxiPaths: TaxiPath[],
+  nodes: NodeWithData[],
   userPosition: GeoPosition
 ): string => {
-  const closestTaxiPath = getClosestGeoPosition<TaxiPath>(
+  const closestNode = getClosestGeoPosition<NodeWithData>(
     userPosition,
-    taxiPaths.map((taxiPath) => ({
-      source: taxiPath,
-      position: {
-        lat: taxiPath.start_laty,
-        long: taxiPath.start_lonx,
-      },
+    nodes.map((node) => ({
+      source: node,
+      position: node.pos,
     }))
   );
 
-  const key = getNodeName(
-    closestTaxiPath.source.name,
-    closestTaxiPath.source.index
-  );
+  const key = getNodeName(closestNode.source.pos);
 
   console.debug(`closest taxipath start to user`, key);
 
@@ -467,27 +459,18 @@ const getStartNodeName = (
 };
 
 const getEndNodeName = (
-  runwayEnd: RunwayEnd,
-  taxiPaths: TaxiPath[]
+  nodes: NodeWithData[],
+  runwayEnd: RunwayEnd
 ): string => {
-  const closestTaxiPath = getClosestGeoPosition<TaxiPath>(
-    {
-      lat: runwayEnd.laty,
-      long: runwayEnd.lonx,
-    },
-    taxiPaths.map((taxiPath) => ({
-      source: taxiPath,
-      position: {
-        lat: taxiPath.start_laty,
-        long: taxiPath.start_lonx,
-      },
+  const closestNode = getClosestGeoPosition<NodeWithData>(
+    runwayEnd.pos,
+    nodes.map((node) => ({
+      source: node,
+      position: node.pos,
     }))
   );
 
-  const key = getNodeName(
-    closestTaxiPath.source.name,
-    closestTaxiPath.source.index
-  );
+  const key = getNodeName(closestNode.source.pos);
 
   console.debug(`closest taxipath start to runway`, key);
 
@@ -544,10 +527,60 @@ const drawAngleBetweenNodes = (
   );
 };
 
-const drawGraphNode = (state: AppState, node: NodeWithData) => {
+const drawGraphNode = (
+  state: AppState,
+  nodeName: string,
+  node: NodeWithData
+) => {
   const canvasPos = convertGeoPositionToCanvasPosition(state, node.pos);
 
-  drawDot(state.ctx, canvasPos, "purple", widthToCanvas(50, state.zoomLevel));
+  drawDot(state.ctx, canvasPos, "purple", widthToCanvas(75, state.zoomLevel));
+
+  drawText(
+    state.ctx,
+    nodeName,
+    {
+      x: canvasPos.x + 20,
+      y: canvasPos.y + 5,
+    },
+    "purple",
+    "12px"
+  );
+
+  const neighborKeys = Object.keys(node.neighbors);
+
+  let i = 0;
+  for (const neighborKey of neighborKeys) {
+    drawText(
+      state.ctx,
+      neighborKey,
+      {
+        x: canvasPos.x + 10,
+        y: canvasPos.y + i * 10,
+      },
+      "purple",
+      "10px"
+    );
+    i++;
+  }
+};
+
+const drawRelationshipBetweenNodes = (
+  state: AppState,
+  nodeA: NodeWithData,
+  nodeB: NodeWithData
+) => {
+  const startPos = convertGeoPositionToCanvasPosition(state, nodeA.pos);
+  const endPos = convertGeoPositionToCanvasPosition(state, nodeB.pos);
+
+  drawLine(
+    state.ctx,
+    startPos,
+    endPos,
+    "purple",
+    widthToCanvas(75, state.zoomLevel)
+    // 50
+  );
 };
 
 export const draw = async (
@@ -572,14 +605,16 @@ export const draw = async (
   let startNodeName = "";
   let endNodeName = "";
 
+  graph = getGraphFromTaxiwaysAndRunways(taxiPaths, runwayEnds);
+
+  if (!graph) {
+    throw new Error("Failed to create graph");
+  }
+
   if (state.shouldGuide && state.userPosition && state.runwayName) {
-    graph = getGraphFromTaxiwaysAndRunways(taxiPaths, runwayEnds);
+    const nodes = Object.values(graph);
 
-    if (!graph) {
-      throw new Error("Failed to create graph");
-    }
-
-    startNodeName = getStartNodeName(taxiPaths, state.userPosition);
+    startNodeName = getStartNodeName(nodes, state.userPosition);
 
     const targetRunwayEnd = runwayEnds.find(
       (runwayEnd) => runwayEnd.name === state.runwayName
@@ -589,21 +624,63 @@ export const draw = async (
       throw new Error(`No runway end found for ${state.runwayName}`);
     }
 
-    endNodeName = getEndNodeName(targetRunwayEnd, taxiPaths);
+    endNodeName = getEndNodeName(nodes, targetRunwayEnd);
 
     drawGraphStartAndEnd(state, graph, startNodeName, endNodeName);
-  }
-
-  if (graph && state.settings.showGraph) {
-    for (const key in graph) {
-      const node = graph[key];
-      drawGraphNode(state, node);
-    }
   }
 
   if (state.settings.showRunwayIntersections) {
     for (const runwayIntersection of runwayIntersections) {
       drawRunwayIntersection(state, runwayIntersection);
+    }
+  }
+
+  if (graph && state.settings.showGraph) {
+    const drawnRelationships: [string, string][] = [];
+
+    for (const nodeName in graph) {
+      const node = graph[nodeName];
+
+      for (const neighborNodeName in node.neighbors) {
+        const neighborNode = graph[neighborNodeName];
+
+        const alreadyDrawn = drawnRelationships.find(
+          (relationship) =>
+            relationship.includes(nodeName) &&
+            relationship.includes(neighborNodeName)
+        );
+
+        if (alreadyDrawn) {
+          continue;
+        }
+
+        drawRelationshipBetweenNodes(state, node, neighborNode);
+
+        drawnRelationships.push([nodeName, neighborNodeName]);
+      }
+
+      // const taxiPath = node.source as TaxiPath;
+      // for (const neighborKey in node.neighborAngles) {
+      //   const neighbor = graph[neighborKey];
+      //   const neighborTaxiPath = neighbor.source as TaxiPath;
+      //   const angle = node.neighborAngles[neighborKey];
+      //   const alreadyDrawn = drawnRelationships.find(
+      //     (relationship) =>
+      //       relationship.includes(key) && relationship.includes(neighborKey)
+      //   );
+      //   if (alreadyDrawn) {
+      //     continue;
+      //   }
+      //   drawAngleBetweenNodes(state, angle, taxiPath, neighborTaxiPath);
+      //   drawnRelationships.push([key, neighborKey]);
+      // }
+    }
+  }
+
+  if (graph && state.settings.showGraph) {
+    for (const nodeName in graph) {
+      const node = graph[nodeName];
+      drawGraphNode(state, nodeName, node);
     }
   }
 
@@ -658,20 +735,30 @@ export const draw = async (
 
         if (result.path !== null) {
           var i = 0;
-          for (const pathName of result.path) {
+
+          let lastNode: NodeWithData | null = null;
+
+          for (const nodeName of result.path) {
             // await new Promise((resolve) => setTimeout(resolve, 10));
 
-            const taxiPath = graph[pathName].source as TaxiPath;
-            drawTaxiPathForRoute(state, taxiPath, i);
+            const node = graph[nodeName];
 
-            const pos = convertGeoPositionToCanvasPosition(state, {
-              lat: taxiPath.start_laty,
-              long: taxiPath.start_lonx,
-            });
-            drawDot(ctx, pos, "yellow", distanceToCanvas(5, state.zoomLevel));
-            i++;
+            if (lastNode) {
+              drawGuideLine(state, lastNode, node);
+            }
 
-            drawText(ctx, pathName, { x: 0, y: 20 * i }, "black");
+            lastNode = node;
+
+            // drawTaxiPathForRoute(state, taxiPath, i);
+
+            // const pos = convertGeoPositionToCanvasPosition(state, {
+            //   lat: taxiPath.start_laty,
+            //   long: taxiPath.start_lonx,
+            // });
+            // drawDot(ctx, pos, "yellow", distanceToCanvas(5, state.zoomLevel));
+            // i++;
+
+            // drawText(ctx, pathName, { x: 0, y: 20 * i }, "black");
           }
         } else {
           console.warn("Could not find a path");
@@ -679,34 +766,6 @@ export const draw = async (
       }
     } catch (err) {
       console.error(err);
-    }
-  }
-
-  if (graph && state.settings.showAngles) {
-    const drawnRelationships: [string, string][] = [];
-
-    for (const key in graph) {
-      const node = graph[key];
-      const taxiPath = node.source as TaxiPath;
-
-      for (const neighborKey in node.neighborAngles) {
-        const neighbor = graph[neighborKey];
-        const neighborTaxiPath = neighbor.source as TaxiPath;
-        const angle = node.neighborAngles[neighborKey];
-
-        const alreadyDrawn = drawnRelationships.find(
-          (relationship) =>
-            relationship.includes(key) && relationship.includes(neighborKey)
-        );
-
-        if (alreadyDrawn) {
-          continue;
-        }
-
-        drawAngleBetweenNodes(state, angle, taxiPath, neighborTaxiPath);
-
-        drawnRelationships.push([key, neighborKey]);
-      }
     }
   }
 
